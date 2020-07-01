@@ -1,0 +1,119 @@
+nagios-setup
+
+/etc/nagios/servers
+curl -fsSL https://get.docker.com -o get-docker.sh
+
+
+steps launch instance
+choose ubuntu image 20.04
+cofigure no: of instance up to 2
+add tags: 1 name : nagios
+security group -add rule:- (http 80) and (all traffic) from anywhere
+ 
+
+$hostnamectl set-hostname 20.04nagios
+Step 1: Update Ubuntu package
+$sudo apt-get update
+Step 2: Install dependency package:
+$sudo apt install -y build-essential apache2 php openssl perl make php-gd libgd-dev libapache2-mod-php libperl-dev libssl-dev daemon wget apache2-utils unzip
+
+Step 3: Create account information, user and group for Nagios
+sudo useradd nagios
+sudo groupadd nagcmd
+
+Step 4: Add the Nagios and apache user to the nagcmd group
+sudo usermod -a -G nagcmd nagios
+sudo usermod -a -G nagcmd www-data
+
+Step 5: Download Nagios core for Ubuntu 20
+Download Nagios core tar file by using wget command as mentioned in the below steps or you can also download the latest version from the official Nagios download page.
+
+cd /tmp
+wget https://assets.nagios.com/downloads/nagioscore/releases/nagios-4.4.5.tar.gz
+tar -zxvf /tmp/nagios-4.4.5.tar.gz
+cd /tmp/nagios-4.4.5/
+
+
+Step 6: Install Nagios core on Ubuntu 20
+sudo ./configure --with-nagios-group=nagios --with-command-group=nagcmd --with-httpd_conf=/etc/apache2/sites-enabled/
+sudo make all
+sudo make install
+sudo make install-init
+sudo make install-config
+sudo make install-commandmode
+
+Step 7: Configure Nagios on Ubuntu 20
+Default Nagios configuration files found in /usr/local/nagios/etc directory.
+To receive alert notification you need to update your email id in “/usr/local/nagios/etc/objects/contacts.cfg” file.
+sudo nano /usr/local/nagios/etc/objects/contacts.cfg
+
+
+Step 8: Install  and configure Nagios Web Interface
+sudo make install-webconf
+Create a nagiosadmin account for logging into the Nagios web interface.
+
+Note: The password you need while login to Nagios web console.
+
+sudo htpasswd -c /usr/local/nagios/etc/htpasswd.users nagiosadmin
+sudo a2enmod cgi
+sudo systemctl restart apache2
+
+Step 9: Download and Extract Nagios Plugins
+cd /tmp
+wget https://nagios-plugins.org/download/nagios-plugins-2.3.3.tar.gz
+tar -zxvf /tmp/nagios-plugins-2.3.3.tar.gz
+cd /tmp/nagios-plugins-2.3.3/
+Compile and install the Nagios plugins.
+
+sudo ./configure --with-nagios-user=nagios --with-nagios-group=nagios
+sudo make
+sudo make install
+
+Step 10: Verify the sample Nagios configuration files.
+sudo /usr/local/nagios/bin/nagios -v /usr/local/nagios/etc/nagios.cfg
+
+Step 11: Enable Nagios service to start automatically at system boot/startup.
+sudo systemctl enable nagios
+
+Step 12: Start Nagios Service
+sudo systemctl start nagios
+
+Step 13: Log in to the Nagios Web Interface
+http://your-server-ip-address/nagios/
+
+========================================
+
+
+
+sudo vim /usr/local/nagios/etc/nagios.cfg
+#cfg_dir=/usr/local/nagios/etc/servers                             (uncomment the line)
+mkdir -p /usr/local/nagios/etc/servers
+
+vim /usr/local/nagios/etc/servers/node01.cfg
+
+define host {
+    use                     linux-server            ; Name of host template to use
+    host_name               node02
+    alias                   node02
+    address                 172.31.14.1	
+}
+
+define host {
+    use                     linux-server            ; Name of host template to use
+    host_name               node03
+    alias                   node03
+    address                 172.31.7.2
+}
+
+define service {
+    use                     generic-service           ; Name of service template to use
+    host_name               node01
+    service_description     PING
+    check_command           check_ping!100.0,20%!500.0,60%
+}
+
+
+save & exit
+service nagios restart
+
+
